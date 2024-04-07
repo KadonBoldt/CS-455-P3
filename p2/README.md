@@ -1,11 +1,7 @@
-# Project Number/Title {#mainpage}
+# Project 2: Identity Server (Phase I)
 
-* Author: Your Name
-* Class: CS455 or CS555 [Distributed Systems] Section #num
-
-You should complete the template below with your own words to finish this README.md file. This
-is a Markdown format file. If you are not familiar with it, here is a quick cheatsheet
-[https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet]
+* Author: Kadon Boldt & Jacob Seppa
+* Class: CS455 [Distributed Systems] Section #1
 
 ## Overview
 
@@ -36,7 +32,6 @@ This section should detail how you tested your code. Simply stating "I ran it a 
 it seems to work" is not sufficient. Your testing needs to be detailed here or even better,
 this section should document the appropriate smoke/unit/system tests that you wrote. For a
 homework, I don't expect much but for a project this section should have significant content.
-
 
 ### Known Bugs
 
