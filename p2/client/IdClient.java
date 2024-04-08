@@ -7,11 +7,12 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
 public class IdClient {
 
-    public static final int DEFAULT_PORT = 5113;
     public static final String SSL_PASSWORD = "password123";
 
     public static void main(String[] args) {
@@ -29,7 +30,7 @@ public class IdClient {
             if (!(args[0].equals("--server") || args[0].equals("-s"))) {
                 throw new IndexOutOfBoundsException();
             }
-            int port = DEFAULT_PORT;
+            int port = Server.DEFAULT_PORT;
             int queryArg = 2;
             if (args[queryArg].equals("--numport") || args[queryArg].equals("-n")) {
                 port = Integer.parseInt(args[queryArg + 1]);
@@ -132,11 +133,23 @@ public class IdClient {
         System.exit(code);
     }
 
+    public static String encryptPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            return new String(digest.digest(password.getBytes()));
+        }
+        catch (NoSuchAlgorithmException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return null;
+    }
+
     private Server server = null;
 
     public IdClient(String host, int port) throws RemoteException, NotBoundException {
         Registry registry = LocateRegistry.getRegistry(host, port);
-        server = (Server) registry.lookup("IdServer");
+        server = (Server) registry.lookup(Server.SERVER_NAME);
     }
 
     public String create(String loginName, String realName) throws RemoteException {
@@ -144,7 +157,7 @@ public class IdClient {
     }
 
     public String create(String loginName, String realName, String password) throws RemoteException {
-        return server.create(loginName, realName, password);
+        return server.create(loginName, realName, encryptPassword(password));
     }
 
     public String lookup(String loginName) throws RemoteException {
@@ -160,7 +173,7 @@ public class IdClient {
     }
 
     public String modify(String oldLoginName, String newLoginName, String password) throws RemoteException {
-        return server.modify(oldLoginName, newLoginName, password);
+        return server.modify(oldLoginName, newLoginName, encryptPassword(password));
     }
 
     public String delete(String loginName) throws RemoteException {
@@ -168,7 +181,7 @@ public class IdClient {
     }
 
     public String delete(String loginName, String password) throws RemoteException {
-        return server.delete(loginName, password);
+        return server.delete(loginName, encryptPassword(password));
     }
 
     public String get(Server.getType type) throws RemoteException {

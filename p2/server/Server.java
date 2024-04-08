@@ -6,6 +6,9 @@ import java.util.UUID;
 
 public interface Server extends Remote {
 
+    public static final int DEFAULT_PORT = 1099;
+    public static final String SERVER_NAME = "IdServer";
+
     public enum getType {
         USERS,
         UUIDS,
