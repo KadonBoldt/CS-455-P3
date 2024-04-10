@@ -149,7 +149,7 @@ public class IdClient {
 
     public IdClient(String host, int port) throws RemoteException, NotBoundException {
         Registry registry = LocateRegistry.getRegistry(host, port);
-        server = (Server) registry.lookup(Server.SERVER_NAME);
+        server = (Server) registry.lookup("//" + host + ":" + port + "/" + Server.SERVER_NAME);
     }
 
     public String create(String loginName, String realName) throws RemoteException {

@@ -14,6 +14,9 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import java.util.UUID;
 
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+
 public class IdServer extends UnicastRemoteObject implements Server {
 
     public static void main(String[] args) {
@@ -65,8 +68,9 @@ public class IdServer extends UnicastRemoteObject implements Server {
         System.exit(code);
     }
 
-    public int port;
-    public boolean verbose;
+    private int port;
+    private boolean verbose;
+    private JedisPool jedis;
 
     public IdServer(int port, boolean verbose) throws RemoteException {
         super();
@@ -80,7 +84,7 @@ public class IdServer extends UnicastRemoteObject implements Server {
             RMIServerSocketFactory rmiServerSocketFactory = new SslRMIServerSocketFactory();
             Server ccAuth = (Server) UnicastRemoteObject.exportObject(this, 0, rmiClientSocketFactory, rmiServerSocketFactory);
             Registry registry = LocateRegistry.createRegistry(port);
-            registry.rebind(SERVER_NAME, ccAuth);
+            registry.rebind("//localhost:" + port + "/" + SERVER_NAME, ccAuth);
         } catch (Exception e) {
             System.err.println(e.getMessage());
             System.exit(1);
