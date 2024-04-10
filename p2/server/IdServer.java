@@ -5,8 +5,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.RMIClientSocketFactory;
 import java.rmi.server.RMIServerSocketFactory;
-import java.rmi.server.RemoteServer;
-import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
 
 import javax.rmi.ssl.SslRMIClientSocketFactory;
@@ -14,10 +12,9 @@ import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import java.util.UUID;
 
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
-public class IdServer extends UnicastRemoteObject implements Server {
+public class IdServer implements Server {
 
     public static void main(String[] args) {
         int port = DEFAULT_PORT;
@@ -25,7 +22,6 @@ public class IdServer extends UnicastRemoteObject implements Server {
         try {
             switch (args.length) {
                 case 0:
-                    showUsage(0);
                     break;
                 case 1:
                     if (!(args[0].equals("--verbose") || args[0].equals("-v"))) {
@@ -70,12 +66,13 @@ public class IdServer extends UnicastRemoteObject implements Server {
 
     private int port;
     private boolean verbose;
-    private JedisPool jedis;
+    private JedisPool pool;
 
     public IdServer(int port, boolean verbose) throws RemoteException {
         super();
         this.port = port;
         this.verbose = verbose;
+        pool = new JedisPool("localhost", port);
     }
 
     public void bind() {
@@ -86,13 +83,14 @@ public class IdServer extends UnicastRemoteObject implements Server {
             Registry registry = LocateRegistry.createRegistry(port);
             registry.rebind("//localhost:" + port + "/" + SERVER_NAME, ccAuth);
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println(e.getMessage());
             System.exit(1);
         }
     }
 
     public synchronized String create(String loginName, String realName) throws RemoteException {
-        return "";
+        return  "" + port + verbose;
     }
 
     public synchronized String create(String loginName, String realName, String password) throws RemoteException {
