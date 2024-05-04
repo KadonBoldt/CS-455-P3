@@ -93,6 +93,7 @@ public class IdServer implements Server {
     private boolean verbose;
     private JedisPool pool;
     private Map<String, String> loginToUUID = new HashMap<>();
+    private String coordinator = null;
 
     /**
      * Creates a new IdServer with the given parameters.
@@ -402,23 +403,23 @@ public class IdServer implements Server {
             String string = "";
             switch (type) {
                 case USERS:
-                    string += "Found accounts with the following user names:\n";
+                    string += "Found accounts with the following user names:";
                     for (String key : keys) {
-                        string += "\t" + jedis.hget(key, "login_name") + "\n";
+                        string += "\n\t" + jedis.hget(key, "login_name");
                     }
                     break;
                 case UUIDS:
-                    string += "Found accounts with the following UUIDs:\n";
+                    string += "Found accounts with the following UUIDs:";
                     for (String key : keys) {
-                        string += "\t" + key + "\n";
+                        string += "\n\t" + key;
                     }
                     break;
                 case ALL:
-                    string += "Found accounts with the following information:\n";
+                    string += "Found accounts with the following information:";
                     for (String key : keys) {
                         Map<String, String> account = jedis.hgetAll(key);
                         account.remove("password");
-                        string += "\t" + account + "\n";
+                        string += "\n\t" + account;
                     }
                     break;
             }
@@ -430,5 +431,19 @@ public class IdServer implements Server {
         catch (Exception e) {
             return "Error: Couldn't get accounts!";
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String getCoordinator() throws RemoteException {
+        return coordinator;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public String startElection() throws RemoteException {
+        return "localhost";
     }
 }

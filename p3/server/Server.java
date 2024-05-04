@@ -99,4 +99,18 @@ public interface Server extends Remote {
      * @throws RemoteException - in case of remote error.
      */
     public String get(getType type) throws RemoteException;
+
+    /**
+     * Returns whether the server is the coordinator or not.
+     * @return - "yes" if server is coordinator, or the IP address of coordinator if not.
+     * @throws RemoteException - in case of remote error.
+     */
+    public String getCoordinator() throws RemoteException;
+
+    /**
+     * Starts an election for a coordinator.
+     * @return - host name of new coordinator.
+     * @throws RemoteException - in case or remote error.
+     */
+    public String startElection() throws RemoteException;
 }
