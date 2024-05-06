@@ -1000,7 +1000,7 @@ public class IdServer implements Server {
          */
         public String get(getType type) {
             for (String hostName : serverList) {
-                System.out.println("This is a test."); //TODO
+                //System.out.println("This is a test."); //TODO
                 if (hostName.equals(IP_HOST)) {
                     continue;
                 }
