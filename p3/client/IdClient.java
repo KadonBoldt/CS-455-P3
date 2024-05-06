@@ -330,7 +330,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String create(String loginName, String realName) throws RemoteException {
-        return server.create(loginName, realName);
+        return server.create(loginName, realName, false);
     }
 
     /**
@@ -341,7 +341,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String create(String loginName, String realName, String password) throws RemoteException {
-        return server.create(loginName, realName, encryptPassword(password));
+        return server.create(loginName, realName, encryptPassword(password), false);
     }
 
     /**
@@ -351,7 +351,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String lookup(String loginName) throws RemoteException {
-        return server.lookup(loginName);
+        return server.lookup(loginName, false);
     }
 
     /**
@@ -361,7 +361,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String reverseLookup(UUID id) throws RemoteException {
-        return server.reverseLookup(id);
+        return server.reverseLookup(id, false);
     }
 
     /**
@@ -372,7 +372,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String modify(String oldLoginName, String newLoginName) throws RemoteException {
-        return server.modify(oldLoginName, newLoginName);
+        return server.modify(oldLoginName, newLoginName, false);
     }
 
     /**
@@ -383,7 +383,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String modify(String oldLoginName, String newLoginName, String password) throws RemoteException {
-        return server.modify(oldLoginName, newLoginName, encryptPassword(password));
+        return server.modify(oldLoginName, newLoginName, encryptPassword(password), false);
     }
 
     /**
@@ -393,7 +393,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String delete(String loginName) throws RemoteException {
-        return server.delete(loginName);
+        return server.delete(loginName, false);
     }
 
     /**
@@ -403,7 +403,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String delete(String loginName, String password) throws RemoteException {
-        return server.delete(loginName, encryptPassword(password));
+        return server.delete(loginName, encryptPassword(password), false);
     }
 
     /**
@@ -413,7 +413,7 @@ public class IdClient {
      * @throws RemoteException - in case of remote error.
      */
     public String get(Server.getType type) throws RemoteException {
-        return server.get(type);
+        return server.get(type, false);
     }
 
     /**
