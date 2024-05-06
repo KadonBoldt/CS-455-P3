@@ -609,6 +609,9 @@ public class IdServer implements Server {
      */
     private void bootUp() {
         for (String hostName : serverList) {
+            if (hostName.equals(IP_HOST)) {
+                continue;
+            }
             try {
                 Registry registry = LocateRegistry.getRegistry(hostName, port);
                 Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
@@ -618,6 +621,7 @@ public class IdServer implements Server {
                     if (verbose) {
                         System.out.println("[IdServer] Retrieved database from coordinator " + hostName + ".");
                     }
+                    break;
                 }
                 else {
                     try {
@@ -629,6 +633,7 @@ public class IdServer implements Server {
                             if (verbose) {
                                 System.out.println("[IdServer] Retrieved database from coordinator " + hostName + ".");
                             }
+                            break;
                         }
                         else {
                             throw new RemoteException();

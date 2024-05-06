@@ -67,6 +67,7 @@ public class IdClient {
                 String getCoordinator = client.getCoordinator();
                 if (getCoordinator == null) {
                     coordinator = host;
+                    break;
                 }
                 else {
                     try {
@@ -74,6 +75,7 @@ public class IdClient {
                         String testCoordinator = coordinatorClient.getCoordinator();
                         if (testCoordinator == null) {
                             coordinator = getCoordinator;
+                            break;
                         }
                         else {
                             throw new RemoteException();
