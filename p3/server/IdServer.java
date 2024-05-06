@@ -740,14 +740,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.create(loginName, realName, true);
+                return idServer.create(loginName, realName, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -775,14 +772,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.create(loginName, realName, password, true);
+                return idServer.create(loginName, realName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -809,14 +803,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Lookup broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.lookup(loginName, true);
+                return idServer.lookup(loginName, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -845,14 +836,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Reverse lookup broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.reverseLookup(id, true);
+                return idServer.reverseLookup(id, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -880,14 +868,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.modify(oldLoginName, newLoginName, true);
+                return idServer.modify(oldLoginName, newLoginName, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -915,14 +900,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.modify(oldLoginName, newLoginName, password, true);
+                return idServer.modify(oldLoginName, newLoginName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -949,14 +931,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.delete(loginName, true);
+                return idServer.delete(loginName, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -983,14 +962,11 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
             }
             try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.delete(loginName, password, true);
+                return idServer.delete(loginName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
             }
-            return null;
         }
 
         /**
@@ -1000,7 +976,6 @@ public class IdServer implements Server {
          */
         public String get(getType type) {
             for (String hostName : serverList) {
-                //System.out.println("This is a test."); //TODO
                 if (hostName.equals(IP_HOST)) {
                     continue;
                 }
