@@ -569,7 +569,7 @@ public class IdServer implements Server {
             System.out.println("[IdServer] Election won.");
         }
         coordinatorHost = null;
-        coordinator = new IdCoordinator(port, verbose);
+        coordinator = new IdCoordinator(port, verbose, this);
         coordinator.announce();
         return IP_HOST;
     }
@@ -699,15 +699,17 @@ public class IdServer implements Server {
 
         private boolean verbose;
         private int port;
+        private IdServer idServer;
 
         /**
          * Creates a new IdCoordinator.
          * @param port - port number of the coordinator.
          * @param verbose - whether explicit operations are output.
          */
-        public IdCoordinator(int port, boolean verbose) {
+        public IdCoordinator(int port, boolean verbose, IdServer idServer) {
             this.port = port;
             this.verbose = verbose;
+            this.idServer = idServer;
         }
 
         /**
@@ -997,15 +999,6 @@ public class IdServer implements Server {
          * @return - server response message.
          */
         public String get(getType type) {
-            String string = null;
-            try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                string = server.get(type, true);
-            }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
-            }
             for (String hostName : serverList) {
                 if (hostName.equals(IP_HOST)) {
                     continue;
@@ -1023,7 +1016,12 @@ public class IdServer implements Server {
             if (verbose) {
                 System.out.println("[IdCoordinator] Get broadcast sent to all servers.");
             }
-            return string;
+            try {
+                return idServer.get(type, true);
+            }
+            catch (RemoteException e) {
+                return "Hmm... something went wrong.";
+            }
         }
 
         /**
