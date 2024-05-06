@@ -1,5 +1,10 @@
 package server;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -8,10 +13,7 @@ import java.rmi.server.*;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Jedis;
@@ -29,6 +31,11 @@ import redis.clients.jedis.Jedis;
  */
 public class IdServer implements Server {
 
+    private static LinkedList<String> serverList = new LinkedList<>();
+    private static int portNum = DEFAULT_PORT;
+    private static boolean isVerbose = false;
+    private static String IP_HOST = null;
+
     /**
      * Main driver of the server-side program.
      * @param args - command line arguments.
@@ -37,45 +44,86 @@ public class IdServer implements Server {
         System.setProperty("javax.net.ssl.keyStore", "resources/Server_Keystore");
         System.setProperty("javax.net.ssl.keyStorePassword", SSL_PASSWORD);
         System.setProperty("java.security.policy", "resources/mysecurity.policy");
-        int port = DEFAULT_PORT;
-        boolean verbose = false;
+
+        parseArgs(args);
+
         try {
+            IdServer server = new IdServer(portNum, isVerbose);
+            server.bind();
+            System.out.println("[IdServer] Server started on port " + portNum + "!");
+            server.bootUp();
+        }
+        catch (RemoteException e) {
+            System.out.println("[IdServer] Error: " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Parses the command line arguments.
+     * @param args - command line arguments.
+     */
+    private static void parseArgs(String[] args) {
+        try {
+            if (args.length == 0) {
+                showUsage(0);
+            }
+            if (!(args[0].equals("--server") || args[0].equals("-s"))) {
+                throw new NumberFormatException();
+            }
             switch (args.length) {
-                case 0:
-                    break;
-                case 1:
-                    if (!(args[0].equals("--verbose") || args[0].equals("-v"))) {
-                        throw new NumberFormatException();
-                    }
-                    verbose = true;
-                    break;
-                case 2:
-                    if (!(args[0].equals("--numport") || args[0].equals("-n"))) {
-                        throw new NumberFormatException();
-                    }
-                    port = Integer.parseInt(args[1]);
-                    break;
                 case 3:
-                    if (!(args[0].equals("--numport") || args[0].equals("-n")) || !(args[2].equals("--verbose") || args[2].equals("-v"))) {
+                    if (!(args[2].equals("--verbose") || args[2].equals("-v"))) {
                         throw new NumberFormatException();
                     }
-                    port = Integer.parseInt(args[1]);
-                    verbose = true;
+                    isVerbose = true;
+                    break;
+                case 4:
+                    if (!(args[2].equals("--numport") || args[2].equals("-n"))) {
+                        throw new NumberFormatException();
+                    }
+                    portNum = Integer.parseInt(args[3]);
+                    break;
+                case 5:
+                    if (!(args[2].equals("--numport") || args[2].equals("-n")) || !(args[4].equals("--verbose") || args[4].equals("-v"))) {
+                        throw new NumberFormatException();
+                    }
+                    portNum = Integer.parseInt(args[3]);
+                    isVerbose = true;
                     break;
                 default:
                     throw new NumberFormatException();
             }
-            IdServer server = new IdServer(port, verbose);
-            server.bind();
-            System.out.println("[IdServer] Server started on port " + port + "!");
+            IP_HOST = InetAddress.getLocalHost().getHostName();
+            parseServerList(args[1]);
         }
         catch (NumberFormatException e) {
-            System.err.println("Error: Invalid format, please use the provided usage!");
+            System.err.println("[IdServer] Error: Invalid format, please use the provided usage!");
             showUsage(1);
         }
-        catch (RemoteException e) {
-            e.printStackTrace();
-            System.err.println(e.getMessage());
+        catch (UnknownHostException e) {
+            System.err.println("[IdServer] Error: You must be connected to a network to use this program!");
+        }
+    }
+
+    /**
+     * Parses the provided server file to obtain server list.
+     * @param fileName - server list file.
+     */
+    private static void parseServerList(String fileName) {
+        try {
+            Scanner scanner = new Scanner(new File(fileName));
+            while (scanner.hasNextLine()) {
+                serverList.add(scanner.nextLine());
+            }
+            scanner.close();
+            if (serverList.isEmpty()) {
+                System.err.println("[IdServer] Error: File " + fileName + " is empty.");
+                System.exit(1);
+            }
+        }
+        catch (FileNotFoundException e) {
+            System.err.println("[IdServer] Error: File " + fileName + " not found.");
             System.exit(1);
         }
     }
@@ -93,7 +141,8 @@ public class IdServer implements Server {
     private boolean verbose;
     private JedisPool pool;
     private Map<String, String> loginToUUID = new HashMap<>();
-    private String coordinator = null;
+    private IdCoordinator coordinator = null;
+    private String coordinatorHost = null;
 
     /**
      * Creates a new IdServer with the given parameters.
@@ -134,10 +183,9 @@ public class IdServer implements Server {
             RMIServerSocketFactory rmiServerSocketFactory = new SslRMIServerSocketFactory();
             Server ccAuth = (Server) UnicastRemoteObject.exportObject(this, 0, rmiClientSocketFactory, rmiServerSocketFactory);
             Registry registry = LocateRegistry.createRegistry(port);
-            registry.rebind("//localhost:" + port + "/" + SERVER_NAME, ccAuth);
+            registry.rebind("//" + IP_HOST + ":" + port + "/" + SERVER_NAME, ccAuth);
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(e.getMessage());
+            System.out.println("[IdServer] Error: " + e.getMessage());
             System.exit(1);
         }
     }
@@ -152,16 +200,18 @@ public class IdServer implements Server {
             }
         }
         catch (ServerNotActiveException e) {
-            e.printStackTrace();
-            System.err.println(e.getMessage());
+            System.out.println("[IdServer] Error: " + e.getMessage());
         }
     }
 
     /**
      * {@inheritDoc}
      */
-    public synchronized String create(String loginName, String realName) throws RemoteException {
+    public synchronized String create(String loginName, String realName, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.create(loginName, realName);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (loginToUUID.containsKey(loginName)) {
                 return "Error: Login name is already in use!";
@@ -192,8 +242,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String create(String loginName, String realName, String password) throws RemoteException {
+    public synchronized String create(String loginName, String realName, String password, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.create(loginName, realName, password);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (loginToUUID.containsKey(loginName)) {
                 return "Error: Login name is already in use!";
@@ -225,8 +278,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String lookup(String loginName) throws RemoteException {
+    public synchronized String lookup(String loginName, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.lookup(loginName);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
                 return "Error: No account exists with the given login name!";
@@ -247,8 +303,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String reverseLookup(UUID id) throws RemoteException {
+    public synchronized String reverseLookup(UUID id, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.reverseLookup(id);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!jedis.exists(id.toString())) {
                 return "Error: No account exists with the given UUID!";
@@ -268,8 +327,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String modify(String oldLoginName, String newLoginName) throws RemoteException {
+    public synchronized String modify(String oldLoginName, String newLoginName, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.modify(oldLoginName, newLoginName);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(oldLoginName)) {
                 return "Error: No account exists with the given login name!";
@@ -303,8 +365,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String modify(String oldLoginName, String newLoginName, String password) throws RemoteException {
+    public synchronized String modify(String oldLoginName, String newLoginName, String password, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.modify(oldLoginName, newLoginName, password);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(oldLoginName)) {
                 return "Error: No account exists with the given login name!";
@@ -341,8 +406,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String delete(String loginName) throws RemoteException {
+    public synchronized String delete(String loginName, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.delete(loginName);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
                 return "Error: No account exists with the given login name!";
@@ -367,8 +435,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String delete(String loginName, String password) throws RemoteException {
+    public synchronized String delete(String loginName, String password, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.delete(loginName, password);
+        }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
                 return "Error: No account exists with the given login name!";
@@ -396,8 +467,11 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String get(getType type) throws RemoteException {
+    public synchronized String get(getType type, boolean fromCoordinator) throws RemoteException {
         newConnection();
+        if (coordinator != null && !fromCoordinator) {
+            return coordinator.get(type);
+        }
         try (Jedis jedis = pool.getResource()) {
             Set<String> keys = jedis.keys("*");
             String string = "";
@@ -436,14 +510,500 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public String getCoordinator() throws RemoteException {
-        return coordinator;
+    public synchronized String getCoordinator() throws RemoteException {
+        try {
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Retrieved coordinator host name.");
+            }
+        }
+        catch (ServerNotActiveException _) {}
+        return coordinatorHost;
     }
 
     /**
      * {@inheritDoc}
      */
-    public String startElection() throws RemoteException {
-        return "localhost";
+    public synchronized void setCoordinator(String coordinatorHost) throws RemoteException {
+        this.coordinatorHost = coordinatorHost;
+        coordinator = null;
+        try {
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Set coordinator as " + coordinatorHost + ".");
+            }
+        }
+        catch (ServerNotActiveException _) {}
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized String election() throws RemoteException {
+        try {
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Starting election.");
+            }
+        }
+        catch (ServerNotActiveException _) {}
+        for (String hostName : serverList) {
+            try {
+                Registry registry = LocateRegistry.getRegistry(hostName, port);
+                Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                boolean isBully = server.isBully(IP_HOST);
+                if (isBully) {
+                    if (verbose) {
+                        System.out.println("[IdServer] Election lost.");
+                    }
+                    return server.election();
+                }
+            }
+            catch (RemoteException|NotBoundException e) {
+                continue;
+            }
+        }
+        if (verbose) {
+            System.out.println("[IdServer] Election won.");
+        }
+        coordinatorHost = null;
+        coordinator = new IdCoordinator(port, verbose);
+        coordinator.announce();
+        return IP_HOST;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized Map<String, Map<String, String>> getDatabase() throws RemoteException {
+        Map<String, Map<String, String>> database = new HashMap<>();
+        try (Jedis jedis = pool.getResource()) {
+            Set<String> keys = jedis.keys("*");
+            for (String key : keys) {
+                database.put(key, jedis.hgetAll(key));
+            }
+        }
+        try {
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Successfully retrieved database.");
+            }
+        }
+        catch (ServerNotActiveException _) {}
+        return database;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public synchronized boolean isBully(String hostName) throws RemoteException {
+        try {
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Returned bully result: " + (hostName.hashCode() < IP_HOST.hashCode()) + ".");
+            }
+        }
+        catch (ServerNotActiveException _) {}
+        return hostName.hashCode() < IP_HOST.hashCode();
+    }
+
+    /**
+     * Performs server boot up operations and starts election.
+     */
+    private void bootUp() {
+        for (String hostName : serverList) {
+            try {
+                Registry registry = LocateRegistry.getRegistry(hostName, port);
+                Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                String getCoordinator = server.getCoordinator();
+                if (getCoordinator == null) {
+                    copyDatabase(hostName);
+                    if (verbose) {
+                        System.out.println("[IdServer] Retrieved database from coordinator " + hostName + ".");
+                    }
+                }
+                else {
+                    try {
+                        Registry coordinatorRegistry = LocateRegistry.getRegistry(getCoordinator, port);
+                        Server coordinator = (Server) registry.lookup("//" + getCoordinator + ":" + port + "/" + Server.SERVER_NAME);
+                        String testCoordinator = coordinator.getCoordinator();
+                        if (testCoordinator == null) {
+                            copyDatabase(getCoordinator);
+                            if (verbose) {
+                                System.out.println("[IdServer] Retrieved database from coordinator " + hostName + ".");
+                            }
+                        }
+                        else {
+                            throw new RemoteException();
+                        }
+                    }
+                    catch (RemoteException|NotBoundException e) {
+                        copyDatabase(hostName);
+                        if (verbose) {
+                            System.out.println("[IdServer] Retrieved database from " + hostName + ".");
+                        }
+                    }
+                }
+            }
+            catch (RemoteException|NotBoundException e) {
+                continue;
+            }
+        }
+        try {
+            election();
+        }
+        catch (RemoteException e) {
+            return;
+        }
+    }
+
+    /**
+     * Copies a database from a different server to this one.
+     * @param hostName - host name of the server to be copied.
+     * @throws RemoteException - in case of remote error.
+     * @throws NotBoundException - in case of rmi error.
+     */
+    private void copyDatabase(String hostName) throws RemoteException, NotBoundException {
+        Registry registry = LocateRegistry.getRegistry(hostName, port);
+        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+        Map<String, Map<String, String>> database = server.getDatabase();
+        try (Jedis jedis = pool.getResource()) {
+            for (String key : database.keySet()) {
+                jedis.hset(key, database.get(key));
+            }
+            Set<String> keys = jedis.keys("*");
+            for (String key : keys) {
+                if (!database.containsKey(key)) {
+                    jedis.del(key);
+                }
+            }
+            if (verbose) {
+                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] " + "Successfully copied database from " + hostName + ".");
+            }
+        }
+        catch (Exception e) {
+            return;
+        }
+    }
+
+    /**
+     * This class is used to perform the coordinator operations of the
+     * distributed IdServers.
+     */
+    private class IdCoordinator {
+
+        private boolean verbose;
+        private int port;
+
+        /**
+         * Creates a new IdCoordinator.
+         * @param port - port number of the coordinator.
+         * @param verbose - whether explicit operations are output.
+         */
+        public IdCoordinator(int port, boolean verbose) {
+            this.port = port;
+            this.verbose = verbose;
+        }
+
+        /**
+         * Broadcasts create message to all servers.
+         * @param loginName - unique login name.
+         * @param realName - real name of the user.
+         * @return - server response message.
+         * @throws RemoteException - in case of remote error.
+         */
+        public String create(String loginName, String realName) throws RemoteException {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.create(loginName, realName, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.create(loginName, realName, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts create message to all servers.
+         * @param loginName - unique login name.
+         * @param realName - real name of the user.
+         * @return - server response message.
+         */
+        public String create(String loginName, String realName, String password) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.create(loginName, realName, password, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.create(loginName, realName, password, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts lookup message to all servers.
+         * @param loginName - unique login name.
+         * @return - server response message.
+         */
+        public String lookup(String loginName) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.lookup(loginName, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Lookup broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.lookup(loginName, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts reverse lookup message to all servers.
+         * @param id - UUID of user.
+         * @return - server response message.
+         */
+        public String reverseLookup(UUID id) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.reverseLookup(id, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Reverse lookup broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.reverseLookup(id, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts modification message to all servers.
+         * @param oldLoginName - original login name.
+         * @param newLoginName - login name to change to.
+         * @return - server response message.
+         */
+        public String modify(String oldLoginName, String newLoginName) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.modify(oldLoginName, newLoginName, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.modify(oldLoginName, newLoginName, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts modification message to all servers.
+         * @param oldLoginName - original login name.
+         * @param newLoginName - login name to change to.
+         * @return - server response message.
+         */
+        public String modify(String oldLoginName, String newLoginName, String password) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.modify(oldLoginName, newLoginName, password, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.modify(oldLoginName, newLoginName, password, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts the delete message to all servers.
+         * @param loginName - unique login name.
+         * @return - server response message.
+         */
+        public String delete(String loginName) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.delete(loginName, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.delete(loginName, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts the delete message to all servers.
+         * @param loginName - unique login name.
+         * @return - server response message.
+         */
+        public String delete(String loginName, String password) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.delete(loginName, password, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.delete(loginName, password, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Broadcasts the get message to all servers.
+         * @param type - type of data to retrieve.
+         * @return - server response message.
+         */
+        public String get(getType type) {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.get(type, true);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Get broadcast sent to all servers.");
+            }
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                return server.get(type, true);
+            }
+            catch (RemoteException|NotBoundException _) {};
+            return null;
+        }
+
+        /**
+         * Announces the coordinator's election to all servers.
+         */
+        public void announce() {
+            for (String hostName : serverList) {
+                if (hostName.equals(IP_HOST)) {
+                    continue;
+                }
+                Thread thread = new Thread(() -> {
+                    try {
+                        Registry registry = LocateRegistry.getRegistry(hostName, port);
+                        Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
+                        server.setCoordinator(IP_HOST);
+                    }
+                    catch (RemoteException|NotBoundException _) {};
+                });
+            }
+            if (verbose) {
+                System.out.println("[IdCoordinator] Coordinator announcement sent to all servers.");
+            }
+        }
     }
 }

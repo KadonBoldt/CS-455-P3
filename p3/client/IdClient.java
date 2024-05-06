@@ -80,7 +80,7 @@ public class IdClient {
                         }
                     }
                     catch (RemoteException|NotBoundException e) {
-                        coordinator = client.startElection();
+                        coordinator = client.election();
                     }
                 }
             }
@@ -430,8 +430,8 @@ public class IdClient {
      * @return - host name of new coordinator.
      * @throws RemoteException - in case or remote error.
      */
-    public String startElection() throws RemoteException {
-        return server.startElection();
+    public String election() throws RemoteException {
+        return server.election();
     }
 
 }
