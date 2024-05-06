@@ -133,7 +133,7 @@ public class IdServer implements Server {
      * @param code - exit code.
      */
     public static void showUsage(int code) {
-        System.out.println("Usage: IdServer [--numport/-n <port#>] [--verbose/-v]");
+        System.out.println("Usage: IdServer --server/-s <filename> [--numport/-n <port#>] [--verbose/-v]");
         System.exit(code);
     }
 
@@ -718,7 +718,9 @@ public class IdServer implements Server {
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
                         server.create(loginName, realName, true);
                     }
-                    catch (RemoteException|NotBoundException e) {};
+                    catch (RemoteException|NotBoundException e) {
+                        System.err.println(e.getMessage());
+                    }
                 });
             }
             if (verbose) {
@@ -729,7 +731,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.create(loginName, realName, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -761,7 +765,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.create(loginName, realName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -792,7 +798,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.lookup(loginName, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -812,7 +820,9 @@ public class IdServer implements Server {
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
                         server.reverseLookup(id, true);
                     }
-                    catch (RemoteException|NotBoundException e) {};
+                    catch (RemoteException|NotBoundException e) {
+                        System.err.println(e.getMessage());
+                    }
                 });
             }
             if (verbose) {
@@ -823,7 +833,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.reverseLookup(id, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -855,7 +867,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.modify(oldLoginName, newLoginName, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -887,7 +901,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.modify(oldLoginName, newLoginName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -918,7 +934,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.delete(loginName, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -949,7 +967,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.delete(loginName, password, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
@@ -980,7 +1000,9 @@ public class IdServer implements Server {
                 Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
                 return server.get(type, true);
             }
-            catch (RemoteException|NotBoundException e) {};
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             return null;
         }
 
