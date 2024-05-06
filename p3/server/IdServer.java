@@ -641,7 +641,7 @@ public class IdServer implements Server {
                 }
             }
             catch (RemoteException|NotBoundException e) {
-                continue;
+                System.err.println(e.getMessage());
             }
         }
         try {
