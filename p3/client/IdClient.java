@@ -157,8 +157,8 @@ public class IdClient {
                             arguments.put("realName", args[queryArg + 1]);
                             arguments.put("password", args[queryArg + 3]);
                             break;
-                    default:
-                        throw new IndexOutOfBoundsException();
+                        default:
+                            throw new IndexOutOfBoundsException();
                     }
                     break;
                 case "--lookup":

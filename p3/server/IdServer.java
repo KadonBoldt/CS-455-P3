@@ -264,7 +264,7 @@ public class IdServer implements Server {
      */
     public synchronized String create(String loginName, String realName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.create(loginName, realName, password);
         }
         if (timestamp != null) {
@@ -315,7 +315,7 @@ public class IdServer implements Server {
      */
     public synchronized String lookup(String loginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.lookup(loginName);
         }
         if (timestamp != null) {
@@ -355,7 +355,7 @@ public class IdServer implements Server {
      */
     public synchronized String reverseLookup(UUID id, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.reverseLookup(id);
         }
         if (timestamp != null) {
@@ -394,7 +394,7 @@ public class IdServer implements Server {
      */
     public synchronized String modify(String oldLoginName, String newLoginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.modify(oldLoginName, newLoginName);
         }
         if (timestamp != null) {
@@ -447,7 +447,7 @@ public class IdServer implements Server {
      */
     public synchronized String modify(String oldLoginName, String newLoginName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.modify(oldLoginName, newLoginName, password);
         }
         if (timestamp != null) {
@@ -503,7 +503,7 @@ public class IdServer implements Server {
      */
     public synchronized String delete(String loginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.delete(loginName);
         }
         if (timestamp != null) {
@@ -547,7 +547,7 @@ public class IdServer implements Server {
      */
     public synchronized String delete(String loginName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.delete(loginName, password);
         }
         if (timestamp != null) {
@@ -594,7 +594,7 @@ public class IdServer implements Server {
      */
     public synchronized String get(getType type, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && timestamp != null) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.get(type);
         }
         if (timestamp != null) {
