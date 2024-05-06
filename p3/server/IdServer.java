@@ -547,6 +547,9 @@ public class IdServer implements Server {
         }
         catch (ServerNotActiveException e) {}
         for (String hostName : serverList) {
+            if (hostName.hashCode() <= IP_HOST.hashCode()) {
+                continue;
+            }
             try {
                 Registry registry = LocateRegistry.getRegistry(hostName, port);
                 Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
