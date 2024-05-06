@@ -41,6 +41,8 @@ public class IdServer implements Server {
      * @param args - command line arguments.
      */
     public static void main(String[] args) {
+        System.setProperty("javax.net.ssl.trustStore", "resources/Client_Truststore");
+        System.setProperty("javax.net.ssl.trustStorePassword", SSL_PASSWORD);
         System.setProperty("javax.net.ssl.keyStore", "resources/Server_Keystore");
         System.setProperty("javax.net.ssl.keyStorePassword", SSL_PASSWORD);
         System.setProperty("java.security.policy", "resources/mysecurity.policy");
