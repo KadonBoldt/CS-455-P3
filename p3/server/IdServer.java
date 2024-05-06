@@ -997,6 +997,15 @@ public class IdServer implements Server {
          * @return - server response message.
          */
         public String get(getType type) {
+            String string = null;
+            try {
+                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
+                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
+                string = server.get(type, true);
+            }
+            catch (RemoteException|NotBoundException e) {
+                System.err.println(e.getMessage());
+            }
             for (String hostName : serverList) {
                 if (hostName.equals(IP_HOST)) {
                     continue;
@@ -1014,15 +1023,7 @@ public class IdServer implements Server {
             if (verbose) {
                 System.out.println("[IdCoordinator] Get broadcast sent to all servers.");
             }
-            try {
-                Registry registry = LocateRegistry.getRegistry(IP_HOST, port);
-                Server server = (Server) registry.lookup("//" + IP_HOST + ":" + port + "/" + Server.SERVER_NAME);
-                return server.get(type, true);
-            }
-            catch (RemoteException|NotBoundException e) {
-                System.err.println(e.getMessage());
-            }
-            return null;
+            return string;
         }
 
         /**
