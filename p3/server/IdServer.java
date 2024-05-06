@@ -732,6 +732,7 @@ public class IdServer implements Server {
                         System.err.println(e.getMessage());
                     }
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
@@ -766,6 +767,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
@@ -799,6 +801,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Lookup broadcast sent to all servers.");
@@ -834,6 +837,7 @@ public class IdServer implements Server {
                         System.err.println(e.getMessage());
                     }
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Reverse lookup broadcast sent to all servers.");
@@ -868,6 +872,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
@@ -902,6 +907,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
@@ -935,6 +941,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
@@ -968,6 +975,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
@@ -1001,6 +1009,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Get broadcast sent to all servers.");
@@ -1032,6 +1041,7 @@ public class IdServer implements Server {
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
+                thread.start();
             }
             if (verbose) {
                 System.out.println("[IdCoordinator] Coordinator announcement sent to all servers.");
