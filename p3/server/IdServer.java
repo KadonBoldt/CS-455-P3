@@ -2,6 +2,7 @@ package server;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
@@ -14,6 +15,7 @@ import javax.rmi.ssl.SslRMIClientSocketFactory;
 import javax.rmi.ssl.SslRMIServerSocketFactory;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Jedis;
@@ -145,6 +147,7 @@ public class IdServer implements Server {
     private Map<String, String> loginToUUID = new HashMap<>();
     private IdCoordinator coordinator = null;
     private String coordinatorHost = null;
+    private LamportTimestamp clock = new LamportTimestamp();
 
     /**
      * Creates a new IdServer with the given parameters.
@@ -209,10 +212,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String create(String loginName, String realName, boolean fromCoordinator) throws RemoteException {
+    public synchronized String create(String loginName, String realName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp == null) {
             return coordinator.create(loginName, realName);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (loginToUUID.containsKey(loginName)) {
@@ -232,7 +250,7 @@ public class IdServer implements Server {
             jedis.hset(uuid, account);
             loginToUUID.put(loginName, uuid);
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Created new account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Created new account with the following info:\n\t" + account);
             }
             return "Account created with UUID " + uuid + ".";
         }
@@ -244,10 +262,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String create(String loginName, String realName, String password, boolean fromCoordinator) throws RemoteException {
+    public synchronized String create(String loginName, String realName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.create(loginName, realName, password);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (loginToUUID.containsKey(loginName)) {
@@ -268,7 +301,7 @@ public class IdServer implements Server {
             jedis.hset(uuid, account);
             loginToUUID.put(loginName, uuid);
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Created new account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Created new account with the following info:\n\t" + account);
             }
             return "Account created with UUID " + uuid + ".";
         }
@@ -280,10 +313,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String lookup(String loginName, boolean fromCoordinator) throws RemoteException {
+    public synchronized String lookup(String loginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.lookup(loginName);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
@@ -292,7 +340,7 @@ public class IdServer implements Server {
             String uuid = loginToUUID.get(loginName);
             Map<String, String> account = jedis.hgetAll(uuid);
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Found account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Found account with the following info:\n\t" + account);
             }
             account.remove("password");
             return "Found account matching login " + loginName + ":\n\t" + account.toString();
@@ -305,10 +353,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String reverseLookup(UUID id, boolean fromCoordinator) throws RemoteException {
+    public synchronized String reverseLookup(UUID id, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.reverseLookup(id);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!jedis.exists(id.toString())) {
@@ -316,7 +379,7 @@ public class IdServer implements Server {
             }
             Map<String, String> account = jedis.hgetAll(id.toString());
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Found account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Found account with the following info:\n\t" + account);
             }
             account.remove("password");
             return "Found account matching UUID " + id.toString() + ":\n\t" + account.toString();
@@ -329,10 +392,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String modify(String oldLoginName, String newLoginName, boolean fromCoordinator) throws RemoteException {
+    public synchronized String modify(String oldLoginName, String newLoginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.modify(oldLoginName, newLoginName);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(oldLoginName)) {
@@ -347,7 +425,7 @@ public class IdServer implements Server {
                 return "Error: Password is required to modify this account!";
             }
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Modified account in the following way:\n\tOld: " + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Modified account in the following way:\n\tOld: " + account);
             }
             account.put("login_name", newLoginName);
             account.put("last_modified", String.valueOf(java.time.LocalDateTime.now()));
@@ -367,10 +445,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String modify(String oldLoginName, String newLoginName, String password, boolean fromCoordinator) throws RemoteException {
+    public synchronized String modify(String oldLoginName, String newLoginName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.modify(oldLoginName, newLoginName, password);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(oldLoginName)) {
@@ -388,7 +481,7 @@ public class IdServer implements Server {
                 return "Error: Incorrect password!";
             }
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Modified account in the following way:\n\tOld: " + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Modified account in the following way:\n\tOld: " + account);
             }
             account.put("login_name", newLoginName);
             account.put("last_modified", String.valueOf(java.time.LocalDateTime.now()));
@@ -408,10 +501,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String delete(String loginName, boolean fromCoordinator) throws RemoteException {
+    public synchronized String delete(String loginName, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.delete(loginName);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
@@ -425,7 +533,7 @@ public class IdServer implements Server {
             jedis.del(uuid);
             loginToUUID.remove(loginName);
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Deleted account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Deleted account with the following info:\n\t" + account);
             }
             return "Deleted account " + loginName + ".";
         }
@@ -437,10 +545,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String delete(String loginName, String password, boolean fromCoordinator) throws RemoteException {
+    public synchronized String delete(String loginName, String password, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.delete(loginName, password);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             if (!loginToUUID.containsKey(loginName)) {
@@ -457,7 +580,7 @@ public class IdServer implements Server {
             jedis.del(uuid);
             loginToUUID.remove(loginName);
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] Deleted account with the following info:\n\t" + account);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] Deleted account with the following info:\n\t" + account);
             }
             return "Deleted account " + loginName + ".";
         }
@@ -469,10 +592,25 @@ public class IdServer implements Server {
     /**
      * {@inheritDoc}
      */
-    public synchronized String get(getType type, boolean fromCoordinator) throws RemoteException {
+    public synchronized String get(getType type, LamportTimestamp timestamp) throws RemoteException {
         newConnection();
-        if (coordinator != null && !fromCoordinator) {
+        if (coordinator != null && timestamp != null) {
             return coordinator.get(type);
+        }
+        if (timestamp != null) {
+            if (!clock.sync(timestamp)) {
+                try {
+                    copyDatabase(coordinatorHost);
+                    System.out.println("[IdServer] Out of sync, copied database from coordinator.");
+                }
+                catch (RemoteException|NotBoundException e) {
+                    System.out.println("[IdServer] Error: Couldn't sync database to coordinator.");
+                }
+                return "Out of sync, copied database from coordinator.";
+            }
+        }
+        else {
+            clock.increment();
         }
         try (Jedis jedis = pool.getResource()) {
             Set<String> keys = jedis.keys("*");
@@ -500,7 +638,7 @@ public class IdServer implements Server {
                     break;
             }
             if (verbose) {
-                System.out.println("[IdServer/" + RemoteServer.getClientHost() + "] " + string);
+                System.out.println("[" + clock.get() + "|IdServer/" + RemoteServer.getClientHost() + "] " + string);
             }
             return string;
         }
@@ -677,9 +815,13 @@ public class IdServer implements Server {
                 jedis.hset(key, database.get(key));
             }
             Set<String> keys = jedis.keys("*");
+            loginToUUID = new HashMap<>();
             for (String key : keys) {
                 if (!database.containsKey(key)) {
                     jedis.del(key);
+                }
+                else {
+                    loginToUUID.put(jedis.hgetAll(key).get("login_name"), key);
                 }
             }
             if (verbose) {
@@ -728,7 +870,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.create(loginName, realName, true);
+                        server.create(loginName, realName, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {
                         System.err.println(e.getMessage());
@@ -740,7 +882,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
             }
             try {
-                return idServer.create(loginName, realName, true);
+                return idServer.create(loginName, realName, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -762,7 +904,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.create(loginName, realName, password, true);
+                        server.create(loginName, realName, password, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -772,7 +914,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Create broadcast sent to all servers.");
             }
             try {
-                return idServer.create(loginName, realName, password, true);
+                return idServer.create(loginName, realName, password, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -793,7 +935,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.lookup(loginName, true);
+                        server.lookup(loginName, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -803,7 +945,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Lookup broadcast sent to all servers.");
             }
             try {
-                return idServer.lookup(loginName, true);
+                return idServer.lookup(loginName, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -824,7 +966,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.reverseLookup(id, true);
+                        server.reverseLookup(id, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {
                         System.err.println(e.getMessage());
@@ -836,7 +978,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Reverse lookup broadcast sent to all servers.");
             }
             try {
-                return idServer.reverseLookup(id, true);
+                return idServer.reverseLookup(id, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -858,7 +1000,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.modify(oldLoginName, newLoginName, true);
+                        server.modify(oldLoginName, newLoginName, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -868,7 +1010,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
             }
             try {
-                return idServer.modify(oldLoginName, newLoginName, true);
+                return idServer.modify(oldLoginName, newLoginName, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -890,7 +1032,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.modify(oldLoginName, newLoginName, password, true);
+                        server.modify(oldLoginName, newLoginName, password, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -900,7 +1042,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Modify broadcast sent to all servers.");
             }
             try {
-                return idServer.modify(oldLoginName, newLoginName, password, true);
+                return idServer.modify(oldLoginName, newLoginName, password, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -921,7 +1063,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.delete(loginName, true);
+                        server.delete(loginName, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -931,7 +1073,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
             }
             try {
-                return idServer.delete(loginName, true);
+                return idServer.delete(loginName, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -952,7 +1094,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.delete(loginName, password, true);
+                        server.delete(loginName, password, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -962,7 +1104,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Delete broadcast sent to all servers.");
             }
             try {
-                return idServer.delete(loginName, password, true);
+                return idServer.delete(loginName, password, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
@@ -983,7 +1125,7 @@ public class IdServer implements Server {
                     try {
                         Registry registry = LocateRegistry.getRegistry(hostName, port);
                         Server server = (Server) registry.lookup("//" + hostName + ":" + port + "/" + Server.SERVER_NAME);
-                        server.get(type, true);
+                        server.get(type, idServer.clock);
                     }
                     catch (RemoteException|NotBoundException e) {};
                 });
@@ -993,7 +1135,7 @@ public class IdServer implements Server {
                 System.out.println("[IdCoordinator] Get broadcast sent to all servers.");
             }
             try {
-                return idServer.get(type, true);
+                return idServer.get(type, idServer.clock);
             }
             catch (RemoteException e) {
                 return "Hmm... something went wrong.";
