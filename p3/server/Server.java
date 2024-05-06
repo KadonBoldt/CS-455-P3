@@ -182,5 +182,15 @@ public interface Server extends Remote {
         public int get() {
             return clock.get();
         }
+
+        /**
+         * Obtains clone of the timestamp.
+         * @return - clone of timestamp.
+         */
+        public LamportTimestamp copy() {
+            LamportTimestamp timestamp = new LamportTimestamp();
+            timestamp.clock.set(clock.get());
+            return timestamp;
+        }
     }
 }
